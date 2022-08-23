@@ -1,4 +1,4 @@
-package independent_frame_rate
+package frame_rate_independent
 
 import (
 	"fmt"
@@ -8,17 +8,18 @@ import (
 )
 
 func Run(fps float64) {
-	fmt.Printf("%.0fFPS\n\n", fps)
+	fmt.Printf("TARGET: %.0f FPS\n\n", fps)
 	// frame settings
 	var (
 		frameRate        = 1000 / fps // FPS converted to milliseconds
-		startedAt        time.Time
+		frameStart       time.Time
+		prevTime         time.Time
 		deltaTime        = float64(0)
 		frameTime        time.Duration
-		prevTime         = time.Now()
 		frames           int
 		counterPerSecond int
 		timerPerSecond   time.Time
+		startedAt        time.Time
 	)
 
 	// Object settings
@@ -35,9 +36,10 @@ func Run(fps float64) {
 	)
 
 	timerPerSecond = time.Now()
+	prevTime = time.Now()
 
 	for running {
-		frameStart := time.Now()
+		frameStart = time.Now()
 
 		if !core.Listen() || object.X+object.W >= core.SCREEN_WIDTH {
 			running = false
@@ -60,17 +62,21 @@ func Run(fps float64) {
 		})
 
 		frameTime = frameStart.Sub(prevTime)
-		deltaTime = frameTime.Seconds()
 		prevTime = frameStart
+		deltaTime = frameTime.Seconds()
+
+		frameTimeNoDelay := time.Since(frameStart)
+		deltaTimeNoDelay := float64(frameTimeNoDelay.Milliseconds())
+		if deltaTimeNoDelay < frameRate {
+			sdl.Delay(uint32(frameRate - deltaTimeNoDelay))
+		}
 
 		frames++
 		if time.Since(timerPerSecond) >= time.Second {
 			counterPerSecond++
 			timerPerSecond = time.Now()
-			fmt.Printf("Frames=%d, PerSecond=%d\r", frames, frames/counterPerSecond)
+			fmt.Printf("\rFPS=%d, FrameTime=%s", frames/counterPerSecond, frameTime.String())
 		}
-
-		sdl.Delay(uint32(frameRate))
 	}
 
 	if start {
